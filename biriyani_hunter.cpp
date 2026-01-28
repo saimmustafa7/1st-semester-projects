@@ -7,8 +7,107 @@
 #include <fstream>
 #include <sstream>
 #include <string>
+#include <SFML/Audio.hpp>
 
 using namespace std;
+
+// ==================== SOUND MANAGER CLASS ====================
+class SoundManager {
+private:
+    sf::SoundBuffer gunshotBuffer;
+    sf::SoundBuffer enemyHitBuffer;
+    sf::SoundBuffer healthPickupBuffer;
+    sf::Music backgroundMusic;
+    
+    sf::Sound gunshotSound;
+    sf::Sound enemyHitSound;
+    sf::Sound healthPickupSound;
+    
+    bool soundsLoaded;
+
+public:
+    SoundManager() : soundsLoaded(false) {}
+    
+    bool loadSounds() {
+        // Load gunshot sound
+        if (!gunshotBuffer.loadFromFile("sounds/gunshot.wav")) {
+            cerr << "Warning: Failed to load gunshot.wav" << endl;
+            soundsLoaded = false;
+            return false;
+        }
+        
+        // Load enemy hit sound
+        if (!enemyHitBuffer.loadFromFile("sounds/enemy_hit.wav")) {
+            cerr << "Warning: Failed to load enemy_hit.wav" << endl;
+            soundsLoaded = false;
+            return false;
+        }
+        
+        // Load health pickup sound
+        if (!healthPickupBuffer.loadFromFile("sounds/health_pickup.wav")) {
+            cerr << "Warning: Failed to load health_pickup.wav" << endl;
+            soundsLoaded = false;
+            return false;
+        }
+        
+        // Load background music
+        if (!backgroundMusic.openFromFile("sounds/background_music.ogg")) {
+            cerr << "Warning: Failed to load background_music.ogg" << endl;
+            soundsLoaded = false;
+            return false;
+        }
+        
+        // Attach buffers to sounds
+        gunshotSound.setBuffer(gunshotBuffer);
+        enemyHitSound.setBuffer(enemyHitBuffer);
+        healthPickupSound.setBuffer(healthPickupBuffer);
+        
+        // Configure background music
+        backgroundMusic.setLoop(true);
+        backgroundMusic.setVolume(25);  // Background music at 25% volume
+        
+        // Set sound effect volumes
+        gunshotSound.setVolume(50);
+        enemyHitSound.setVolume(60);
+        healthPickupSound.setVolume(70);
+        
+        soundsLoaded = true;
+        return true;
+    }
+    
+    void playGunshot() {
+        if (soundsLoaded) {
+            gunshotSound.play();
+        }
+    }
+    
+    void playEnemyHit() {
+        if (soundsLoaded) {
+            enemyHitSound.play();
+        }
+    }
+    
+    void playHealthPickup() {
+        if (soundsLoaded) {
+            healthPickupSound.play();
+        }
+    }
+    
+    void startBackgroundMusic() {
+        if (soundsLoaded) {
+            backgroundMusic.play();
+        }
+    }
+    
+    void stopBackgroundMusic() {
+        if (soundsLoaded) {
+            backgroundMusic.stop();
+        }
+    }
+};
+
+// Global sound manager instance
+SoundManager soundManager;
 
 void move(int &px, int &py, int &ex, int &ey, int consolewidth, int consoleheight, int &score, int &level, int &health, int &ex1, int &ey1, bool &enemy1moveright, int &ex3, int &ey3, bool &enemy3moveright, bool &moveUpperRight, bool &enemy3movedown, int &ex2, int &ey2, bool &enemy2moveright, bool &moveUpperLeft, bool &enemy2movedown, int &enemy1Health, int &enemy2Health, int &enemy3Health, bool &level2reached, bool &level3reached, string headingcolor, int Playerbullets[2][100], int enemybullets[2][100], int &enemyBulletCount, int &playerBulletCount, bool &pillActive, int &pillX, int &pillY);
 void printMaze(int consolewidth, int consoleheight, int &score, int &level, int &health);
@@ -79,11 +178,18 @@ main()
     int pillX, pillY;
     char pill = '+';
 
+    // ========== LOAD SOUNDS ==========
+    if (!soundManager.loadSounds()) {
+        cout << "Warning: Some sounds failed to load. Game will continue without sound effects." << endl;
+        Sleep(2000);
+    }
+
     // ---- initial settings ----
     int ex1 = consolewidth / 2, ey1 = 6, ex3 = 1, ey3 = 7, ex2 = consolewidth - 7, ey2 = 8, enemy1Health = 5, enemy2Health = 5, enemy3Health = 5;
     int px = 1, py = consoleheight - 3, ex = consolewidth - 6, ey = 6;
     system("cls");
     hideCursor();
+    soundManager.startBackgroundMusic();  // START BACKGROUND MUSIC
     Start(consolewidth, consoleheight);
     showCursor();
     int choice = resumeGame(consolewidth, consoleheight);
@@ -100,6 +206,10 @@ main()
     else
     {
     };
+    
+    // ========== START BACKGROUND MUSIC ==========
+
+    
     hideCursor();
     setcolor(headingcolor);
     printMaze(consolewidth, consoleheight, score, level, health);
@@ -221,12 +331,13 @@ void move(int &px, int &py, int &ex, int &ey, int consolewidth, int consoleheigh
                        py, px, score, health);
             lastEnemyMove = GetTickCount();
         }
-        // playerfire
+        // ========== PLAYER FIRE (WITH GUNSHOT SOUND) ==========
         if (GetAsyncKeyState(VK_SPACE) & 0x8000)
         {
             if (GetTickCount() - lastShot > 120)
             {
                 playerFire(px, py, Playerbullets, playerBulletCount);
+                soundManager.playGunshot();  // PLAY GUNSHOT SOUND
                 lastShot = GetTickCount();
             }
         }
@@ -934,7 +1045,7 @@ void movePlayerBullets(int Playerbullets[2][100], int &playerBulletCount,
             continue;
         }
 
-        //  enemy 1
+        // ========== ENEMY 1 HIT (WITH SOUND) ==========
         if (level >= 1 &&
             Playerbullets[1][i] >= ey1 - 2 && Playerbullets[1][i] <= ey1 &&
             Playerbullets[0][i] >= ex1 && Playerbullets[0][i] <= ex1 + 4 &&
@@ -942,7 +1053,7 @@ void movePlayerBullets(int Playerbullets[2][100], int &playerBulletCount,
         {
             enemy1Health--;
             score += 10;
-            cout << "\a";
+            soundManager.playEnemyHit();  // PLAY ENEMY HIT SOUND
             saveGameDataWithHeaders(px, py, score, level, health,
                                     ex1, ey1, ex2, ey2, ex3, ey3,
                                     enemy1Health, enemy2Health, enemy3Health,
@@ -958,7 +1069,7 @@ void movePlayerBullets(int Playerbullets[2][100], int &playerBulletCount,
             continue;
         }
 
-        // ---- enemy 2 ----
+        // ========== ENEMY 2 HIT (WITH SOUND) ==========
         if (level >= 2 &&
             Playerbullets[1][i] >= ey2 - 2 && Playerbullets[1][i] <= ey2 &&
             Playerbullets[0][i] >= ex2 && Playerbullets[0][i] <= ex2 + 4 &&
@@ -966,6 +1077,7 @@ void movePlayerBullets(int Playerbullets[2][100], int &playerBulletCount,
         {
             enemy2Health--;
             score += 10;
+            soundManager.playEnemyHit();  // PLAY ENEMY HIT SOUND
             saveGameDataWithHeaders(px, py, score, level, health,
                                     ex1, ey1, ex2, ey2, ex3, ey3,
                                     enemy1Health, enemy2Health, enemy3Health,
@@ -973,7 +1085,6 @@ void movePlayerBullets(int Playerbullets[2][100], int &playerBulletCount,
                                     moveUpperLeft, moveUpperRight,
                                     enemy2movedown, enemy3movedown,
                                     level2reached, level3reached);
-            cout << "\a";
 
             Playerbullets[0][i] = Playerbullets[0][playerBulletCount - 1];
             Playerbullets[1][i] = Playerbullets[1][playerBulletCount - 1];
@@ -982,7 +1093,7 @@ void movePlayerBullets(int Playerbullets[2][100], int &playerBulletCount,
             continue;
         }
 
-        // ---- enemy 3 ----
+        // ========== ENEMY 3 HIT (WITH SOUND) ==========
         if (level >= 3 &&
             Playerbullets[1][i] >= ey3 - 2 && Playerbullets[1][i] <= ey3 &&
             Playerbullets[0][i] >= ex3 && Playerbullets[0][i] <= ex3 + 4 &&
@@ -990,7 +1101,7 @@ void movePlayerBullets(int Playerbullets[2][100], int &playerBulletCount,
         {
             enemy3Health--;
             score += 10;
-            cout << "\a";
+            soundManager.playEnemyHit();  // PLAY ENEMY HIT SOUND
             saveGameDataWithHeaders(px, py, score, level, health,
                                     ex1, ey1, ex2, ey2, ex3, ey3,
                                     enemy1Health, enemy2Health, enemy3Health,
@@ -1224,7 +1335,7 @@ void moveHealthPill(int &health, int px, int py, int consoleheight,
         return;
     }
 
-    // ---- collision with player ----
+    // ========== HEALTH PICKUP (WITH SOUND) ==========
     if (pillY >= py - 2 && pillY <= py &&
         pillX >= px && pillX <= px + 4)
     {
@@ -1232,6 +1343,7 @@ void moveHealthPill(int &health, int px, int py, int consoleheight,
         if (health > 100)
             health = 100;
 
+        soundManager.playHealthPickup();  // PLAY HEALTH PICKUP SOUND
         pillActive = false;
         return;
     }
